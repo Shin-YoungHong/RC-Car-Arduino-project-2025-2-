@@ -1,17 +1,31 @@
-Markdown
-# 🏎️ Arduino 기반 RC카 제작 및 제어 (창의공학설계)
-아두이노 스케치를 활용하여 실제 하드웨어 구동 및 속도 제어를 구현한 RC카 제작 프로젝트입니다.
+# Arduino Line Tracer Control
 
-## 🛠️ 내가 담당한 역할 (Lead Developer)
-단순한 코드 작성을 넘어, 실제 자동차의 움직임과 연동되는 최적의 제어 로직을 구현했습니다.
-* **전체 시스템 코드 작성:** Arduino Sketch를 이용한 차량 구동 및 제어 알고리즘 전반 설계.
-* **실시간 속도 제어 및 최적화:** 실제 주행 테스트를 반복하며 차량의 하드웨어 특성에 맞게 모터 속도와 반응성을 세밀하게 조정(Tuning).
-* **하드웨어-소프트웨어 통합:** 센서 데이터와 모터 출력을 유기적으로 연결하여 안정적인 주행 성능 확보.
+Arduino-based autonomous line-tracing RC car built for **Creative Engineering Design (창의공학설계)**.  
+Implemented closed-loop sensor-to-motor driving logic, ultrasonic start trigger, and real-world PWM motor calibration.
 
-## ✨ 프로젝트 핵심 포인트
-* **현장 피드백 반영:** 시뮬레이션에 그치지 않고, 실제 기구부의 마찰이나 무게를 고려하여 코드를 수정하며 실무적인 문제 해결 능력 배양.
-* **임베디드 기초 역량:** 아두이노를 통한 C/C++ 기반 임베디드 프로그래밍 및 MCU 제어 경험.
+## System Overview
+- **MCU:** Arduino
+- **Sensors:** 2-channel IR line sensors (Left/Right), HC-SR04 Ultrasonic sensor
+- **Actuators:** Dual DC motors with PWM speed control (5V → 9V power upgrade)
 
-## 📁 포함 자료
-* **Source Code:** 차량 제어용 Arduino (.ino) 코드
-* **Presentation:** 창의공학설계 13조 최종 발표 자료 (PPT)
+### Pin Configuration
+| Component | Signal | Arduino Pin |
+| :--- | :--- | :--- |
+| Left Motor | PWM Enable / Forward / Backward | `9` / `4` / `2` |
+| Right Motor | PWM Enable / Forward / Backward | `10` / `7` / `11` |
+| IR Sensors | Left / Right | `8` / `6` |
+| Ultrasonic | Trig / Echo | `12` / `13` |
+
+## Control Logic
+1. **Start Trigger (`setup`):** Waits until an object is detected within `0 < distance < 10 cm` via the ultrasonic sensor, then applies a short `255` PWM kick (`250 ms`) to overcome static friction.
+2. **Line Tracking (`loop`):**
+   - `(0, 0)` White / White → Straight forward (`STRAIGHT_FORWARD = 200`)
+   - `(0, 1)` Right black → Hard right turn (differential reverse wheel braking)
+   - `(1, 0)` Left black → Hard left turn with asymmetric RPM compensation
+   - `(1, 1)` Both black → Full stop (intersection / boundary safety stop)
+
+## Hardware Troubleshooting & Control Tuning
+Real-world driving exposed hardware non-idealities that required iterative software and hardware fixes:
+- **Asymmetric Motor RPM Compensation:** Left and right DC motors exhibited different torque/RPM curves under identical PWM duty cycles. Added directional offsets (`STRAIGHT_SPEED + 25`, `REVERSE_SPEED + 55`) during left turns after track testing.
+- **8-bit PWM Overflow Guard:** Kept base speed below `245` when applying additive offsets so `analogWrite()` never wraps around `255` and stalls the motor.
+- **Sensor Fault Diagnosis:** Isolated a faulty right IR sensor by writing a dedicated `Serial.monitor` diagnostic sketch, confirming hardware failure, and replacing the module to complete full-track laps.
